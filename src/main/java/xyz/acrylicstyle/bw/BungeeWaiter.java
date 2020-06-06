@@ -1,9 +1,11 @@
 package xyz.acrylicstyle.bw;
 
 import net.md_5.bungee.api.ChatColor;
+import net.md_5.bungee.api.CommandSender;
 import net.md_5.bungee.api.ProxyServer;
 import net.md_5.bungee.api.chat.TextComponent;
 import net.md_5.bungee.api.event.ServerConnectedEvent;
+import net.md_5.bungee.api.plugin.Command;
 import net.md_5.bungee.api.plugin.Listener;
 import net.md_5.bungee.api.plugin.Plugin;
 import net.md_5.bungee.config.Configuration;
@@ -37,6 +39,19 @@ public class BungeeWaiter extends Plugin implements Listener {
             LOGGER.warning("Using the default value 'server' for target, LIMBO for limbo if undefined.");
             target = "server";
         }
+        getProxy().getPluginManager().registerCommand(this, new Command("event") {
+            @Override
+            public void execute(CommandSender sender, String[] args) {
+                ProxyServer.getInstance().getServerInfo(target).ping((ping, throwable) -> {
+                    isTargetOnline = throwable == null;
+                    if (isTargetOnline) {
+                        getProxy().getPlayers().forEach(player -> {
+                            if (player.getServer().getInfo().getName().equalsIgnoreCase(limbo)) player.connect(getProxy().getServerInfo(target));
+                        });
+                    }
+                });
+            }
+        });
         getProxy().getPluginManager().registerListener(this, this);
         Timer timer = new Timer();
         TimerTask task = new TimerTask() {
