@@ -4,6 +4,7 @@ import net.md_5.bungee.api.ChatColor;
 import net.md_5.bungee.api.CommandSender;
 import net.md_5.bungee.api.ProxyServer;
 import net.md_5.bungee.api.chat.TextComponent;
+import net.md_5.bungee.api.connection.ProxiedPlayer;
 import net.md_5.bungee.api.event.ServerConnectedEvent;
 import net.md_5.bungee.api.plugin.Command;
 import net.md_5.bungee.api.plugin.Listener;
@@ -42,6 +43,14 @@ public class BungeeWaiter extends Plugin implements Listener {
         getProxy().getPluginManager().registerCommand(this, new Command("event") {
             @Override
             public void execute(CommandSender sender, String[] args) {
+                if (args.length != 0 && args[0].equalsIgnoreCase("--force")) {
+                    if (sender instanceof ProxiedPlayer) {
+                        if (((ProxiedPlayer) sender).getServer().getInfo().getName().equalsIgnoreCase(target)) {
+                            sender.sendMessage(new TextComponent(ChatColor.RED + "You don't have permission to do this."));
+                            return;
+                        }
+                    }
+                }
                 ProxyServer.getInstance().getServerInfo(target).ping((ping, throwable) -> {
                     isTargetOnline = throwable == null;
                     if (isTargetOnline) {
