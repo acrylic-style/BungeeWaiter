@@ -25,6 +25,7 @@ public class BungeeWaiter extends Plugin implements Listener {
     public static String target = null;
     public static boolean isTargetOnline = false;
     public static Map<UUID, TimerTask> tasks = new HashMap<>();
+    public static boolean notification = true;
 
     @Override
     public void onEnable() {
@@ -61,6 +62,18 @@ public class BungeeWaiter extends Plugin implements Listener {
                 });
             }
         });
+        getProxy().getPluginManager().registerCommand(this, new Command("event", "bungeewaiter.notification") {
+            @Override
+            public void execute(CommandSender sender, String[] args) {
+                if (notification) {
+                    notification = false;
+                    sender.sendMessage(new TextComponent("Turned off the notification for everyone."));
+                } else {
+                    notification = true;
+                    sender.sendMessage(new TextComponent("Turned on the notification for everyone."));
+                }
+            }
+        });
         getProxy().getPluginManager().registerListener(this, this);
         Timer timer = new Timer();
         TimerTask task = new TimerTask() {
@@ -89,8 +102,12 @@ public class BungeeWaiter extends Plugin implements Listener {
                 @Override
                 public void run() {
                     if (!e.getPlayer().isConnected()) this.cancel();
+                    if (e.getPlayer().getServer() == null || e.getPlayer().getServer().getInfo() == null) {
+                        LOGGER.warning(e.getPlayer().getName() + "'s server is null");
+                        return;
+                    }
                     if (e.getPlayer().getServer().getInfo().getName().equalsIgnoreCase(limbo)) {
-                        e.getPlayer().sendMessage(new TextComponent(ChatColor.YELLOW + "自動でサーバーに接続されます。そのままお待ちください。"));
+                        if (notification) e.getPlayer().sendMessage(new TextComponent(ChatColor.YELLOW + "自動でサーバーに接続されます。そのままお待ちください。"));
                     } else this.cancel();
                 }
             };
