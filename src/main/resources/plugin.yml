@@ -6,3 +6,5 @@ commands:
     description: "aaa"
   notification:
     permission: "bungeewaiter.notification"
+  versions:
+    permission: "bungeewaiter.versions"
