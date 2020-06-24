@@ -168,6 +168,7 @@ public class BungeeWaiter extends Plugin implements Listener {
     @EventHandler
     public void onServerKick(ServerKickEvent e) {
         kickQueue.add(e.getPlayer().getUniqueId());
+        if (e.getPlayer().getServer() == null) return;
         String currentServer = e.getPlayer().getServer().getInfo().getName();
         String target = getServerMap().get(currentServer.toLowerCase());
         if (target == null) return;
@@ -188,7 +189,7 @@ public class BungeeWaiter extends Plugin implements Listener {
         if (!(e.getConnection().getSocketAddress() instanceof InetSocketAddress)) return;
         String address = ((InetSocketAddress) e.getConnection().getSocketAddress()).getAddress().getHostAddress();
         JSONObject response = (JSONObject) new JSONAPI("http://api.ipstack.com/" + address + "?access_key=" + config.getString("apiKey")).call(JSONObject.class).getResponse();
-        country.add(address, response.getString("country_name"));
+        country.add(address, response.getString("country_code"));
     }
 
     @Nullable
