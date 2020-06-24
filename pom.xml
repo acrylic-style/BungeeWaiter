@@ -64,12 +64,12 @@
         <dependency>
             <groupId>xyz.acrylicstyle</groupId>
             <artifactId>Util</artifactId>
-            <version>0.11.1</version>
+            <version>0.11.12</version>
         </dependency>
         <dependency>
             <groupId>xyz.acrylicstyle</groupId>
             <artifactId>minecraft-util</artifactId>
-            <version>0.0.2</version>
+            <version>0.0.4</version>
         </dependency>
     </dependencies>
 </project>

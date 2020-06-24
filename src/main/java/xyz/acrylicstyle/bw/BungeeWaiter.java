@@ -7,6 +7,7 @@ import net.md_5.bungee.api.chat.TextComponent;
 import net.md_5.bungee.api.connection.ProxiedPlayer;
 import net.md_5.bungee.api.connection.Server;
 import net.md_5.bungee.api.event.PlayerDisconnectEvent;
+import net.md_5.bungee.api.event.PreLoginEvent;
 import net.md_5.bungee.api.event.ServerConnectedEvent;
 import net.md_5.bungee.api.event.ServerKickEvent;
 import net.md_5.bungee.api.plugin.Command;
@@ -15,13 +16,19 @@ import net.md_5.bungee.api.plugin.Plugin;
 import net.md_5.bungee.config.Configuration;
 import net.md_5.bungee.config.YamlConfiguration;
 import net.md_5.bungee.event.EventHandler;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import org.json.JSONObject;
 import util.CollectionList;
 import util.ICollectionList;
+import util.JSONAPI;
 import util.StringCollection;
 import xyz.acrylicstyle.mcutil.lang.MCVersion;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -85,7 +92,7 @@ public class BungeeWaiter extends Plugin implements Listener {
                     getProxy().getPlayers().forEach(player -> {
                         MCVersion version = ICollectionList.asList(MCVersion.getByProtocolVersion(player.getPendingConnection().getVersion())).first();
                         assert version != null;
-                        messages.add(ChatColor.YELLOW + player.getName() + ChatColor.AQUA + ": " + (version.isModern() ? ChatColor.GREEN : ChatColor.YELLOW) + version.getName());
+                        messages.add(ChatColor.YELLOW + player.getName() + ChatColor.AQUA + ": " + (version.isModern() ? ChatColor.GREEN : ChatColor.YELLOW) + version.getName() + "\n");
                     });
                     sender.sendMessage(messages.map((Function<String, TextComponent>) TextComponent::new).toArray(new TextComponent[0]));
                 } else {
@@ -173,14 +180,35 @@ public class BungeeWaiter extends Plugin implements Listener {
         }, 5, TimeUnit.SECONDS);
     }
 
+    public static final StringCollection<String> country = new StringCollection<>();
+
+    @EventHandler
+    public void onPreLogin(PreLoginEvent e) {
+        if (config.getString("apiKey") == null) return;
+        if (!(e.getConnection().getSocketAddress() instanceof InetSocketAddress)) return;
+        String address = ((InetSocketAddress) e.getConnection().getSocketAddress()).getAddress().getHostAddress();
+        JSONObject response = (JSONObject) new JSONAPI("http://api.ipstack.com/" + address + "?access_key=" + config.getString("apiKey")).call(JSONObject.class).getResponse();
+        country.add(address, response.getString("country_name"));
+    }
+
+    @Nullable
+    public String getCountry(@NotNull ProxiedPlayer player) {
+        SocketAddress addr = player.getPendingConnection().getSocketAddress();
+        if (!(addr instanceof InetSocketAddress)) return null;
+        return country.get(((InetSocketAddress) addr).getAddress().getHostAddress());
+    }
+
     @EventHandler
     public void onServerConnected(ServerConnectedEvent e) {
         boolean kicked = kickQueue.remove(e.getPlayer().getUniqueId());
         Server server = e.getPlayer().getServer();
         String name = server == null || server.getInfo() == null ? "Connect" : server.getInfo().getName();
         String target = e.getServer().getInfo().getName();
+        String country = getCountry(e.getPlayer());
+        if (country != null) country = ", " + country;
+        if (country == null) country = "";
         String version = Objects.requireNonNull(ICollectionList.asList(MCVersion.getByProtocolVersion(e.getPlayer().getPendingConnection().getVersion())).first()).getName();
-        TextComponent tc = new TextComponent(PREFIX + e.getPlayer().getName() + ChatColor.GRAY + "[" + version + "]"
+        TextComponent tc = new TextComponent(PREFIX + e.getPlayer().getName() + ChatColor.GRAY + "[" + version + country + "]"
                 + ChatColor.YELLOW + ": " + name + " -> " + target + (kicked ? ChatColor.GRAY + " (kicked from " + name + ")" : ""));
         getProxy().getPlayers().forEach(player -> {
             if (player.hasPermission("bungeewaiter.logging") || player.hasPermission("bungeewaiter.notification")) {
