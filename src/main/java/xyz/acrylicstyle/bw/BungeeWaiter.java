@@ -23,20 +23,23 @@ import util.CollectionList;
 import util.ICollectionList;
 import util.JSONAPI;
 import util.StringCollection;
+import xyz.acrylicstyle.bw.commands.TellCommand;
+import xyz.acrylicstyle.bw.commands.VersionsCommand;
 import xyz.acrylicstyle.mcutil.lang.MCVersion;
 
 import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Function;
 import java.util.logging.Logger;
 
 public class BungeeWaiter extends Plugin implements Listener {
@@ -47,7 +50,7 @@ public class BungeeWaiter extends Plugin implements Listener {
     public static String target = null;
     public static boolean isTargetOnline = false;
     public static Map<UUID, TimerTask> tasks = new HashMap<>();
-    public static boolean notification = true;
+    public static final List<UUID> notification = new ArrayList<>(); // invert
 
     @Override
     public void onEnable() {
@@ -56,6 +59,7 @@ public class BungeeWaiter extends Plugin implements Listener {
         } catch (IOException e) {
             e.printStackTrace();
         }
+        config.getStringList("notification").forEach(s -> notification.add(UUID.fromString(s)));
         limbo = config.getString("limbo", "LIMBO");
         target = config.getString("target");
         if (target == null) {
@@ -84,44 +88,19 @@ public class BungeeWaiter extends Plugin implements Listener {
                 });
             }
         });
-        getProxy().getPluginManager().registerCommand(this, new Command("versions", "bungeewaiter.versions") {
-            @Override
-            public void execute(CommandSender sender, String[] args) {
-                if (args.length == 0) {
-                    CollectionList<String> messages = new CollectionList<>();
-                    getProxy().getPlayers().forEach(player -> {
-                        MCVersion version = ICollectionList.asList(MCVersion.getByProtocolVersion(player.getPendingConnection().getVersion())).first();
-                        assert version != null;
-                        messages.add(ChatColor.YELLOW + player.getName() + ChatColor.AQUA + ": " + (version.isModern() ? ChatColor.GREEN : ChatColor.YELLOW) + version.getName() + "\n");
-                    });
-                    sender.sendMessage(messages.map((Function<String, TextComponent>) TextComponent::new).toArray(new TextComponent[0]));
-                } else {
-                    ProxiedPlayer player = getProxy().getPlayer(args[0]);
-                    if (player == null) {
-                        sender.sendMessage(new TextComponent(ChatColor.RED + "That player is not online."));
-                        return;
-                    }
-                    MCVersion version = ICollectionList.asList(MCVersion.getByProtocolVersion(player.getPendingConnection().getVersion())).first();
-                    assert version != null;
-                    sender.sendMessage(new TextComponent(ChatColor.YELLOW + player.getName() + ChatColor.AQUA + ":"));
-                    sender.sendMessage(new TextComponent(ChatColor.YELLOW + " - Version: " + ChatColor.AQUA + version.getName()));
-                    sender.sendMessage(new TextComponent(ChatColor.YELLOW + " - Modern(1.13+): " + bool(version.isModern())));
-                    sender.sendMessage(new TextComponent(ChatColor.YELLOW + " - Pre-release: " + bool(version.isPrerelease())));
-                    sender.sendMessage(new TextComponent(ChatColor.YELLOW + " - Snapshot: " + bool(version.isSnapshot())));
-                    sender.sendMessage(new TextComponent(ChatColor.YELLOW + " - Release Candidate: " + bool(version.isReleaseCandidate())));
-                    sender.sendMessage(new TextComponent(ChatColor.YELLOW + " - Protocol Version: " + ChatColor.RED + player.getPendingConnection().getVersion()));
-                }
-            }
-        });
+        getProxy().getPluginManager().registerCommand(this, new TellCommand());
+        getProxy().getPluginManager().registerCommand(this, new VersionsCommand());
         getProxy().getPluginManager().registerCommand(this, new Command("notification", "bungeewaiter.notification") {
             @Override
             public void execute(CommandSender sender, String[] args) {
-                if (notification) {
-                    notification = false;
-                    sender.sendMessage(new TextComponent(PREFIX + "Turned off the notification for everyone."));
+                if (!(sender instanceof ProxiedPlayer)) return;
+                ProxiedPlayer player = (ProxiedPlayer) sender;
+                if (notification.contains(player.getUniqueId())) {
+                    notification.remove(player.getUniqueId());
+                    sender.sendMessage(new TextComponent(PREFIX + "Turned on the notification."));
                 } else {
-                    notification = true;
-                    sender.sendMessage(new TextComponent(PREFIX + "Turned on the notification for everyone."));
+                    notification.add(player.getUniqueId());
+                    sender.sendMessage(new TextComponent(PREFIX + "Turned off the notification."));
                 }
             }
         });
@@ -143,6 +122,17 @@ public class BungeeWaiter extends Plugin implements Listener {
             }
         };
         timer.schedule(task, 5000, 5000);
+    }
+
+    @Override
+    public void onDisable() {
+        try {
+            config.set("notification", ICollectionList.asList(notification).map(UUID::toString));
+            YamlConfiguration.getProvider(YamlConfiguration.class).save(config, new File("./plugins/BungeeWaiter/config.yml"));
+        } catch (IOException e) {
+            LOGGER.warning("Failed to save config");
+            e.printStackTrace();
+        }
     }
 
     public static String bool(boolean bool) { return bool ? ChatColor.GREEN + "Yes" : ChatColor.RED + "No"; }
@@ -213,7 +203,9 @@ public class BungeeWaiter extends Plugin implements Listener {
                 + ChatColor.YELLOW + ": " + name + " -> " + target + (kicked ? ChatColor.GRAY + " (kicked from " + name + ")" : ""));
         getProxy().getPlayers().forEach(player -> {
             if (player.hasPermission("bungeewaiter.logging") || player.hasPermission("bungeewaiter.notification")) {
-                player.sendMessage(tc);
+                if (!notification.contains(player.getUniqueId())) {
+                    player.sendMessage(tc);
+                }
             }
         });
         TimerTask t = tasks.remove(e.getPlayer().getUniqueId());
@@ -227,9 +219,13 @@ public class BungeeWaiter extends Plugin implements Listener {
                     LOGGER.warning(e.getPlayer().getName() + "'s server is null");
                     return;
                 }
+                if (isTargetOnline) {
+                    if (e.getPlayer().getServer().getInfo().getName().equalsIgnoreCase(limbo)) {
+                        e.getPlayer().connect(getProxy().getServerInfo(target));
+                    }
+                }
                 if (e.getPlayer().getServer().getInfo().getName().equalsIgnoreCase(limbo)) {
-                    if (notification)
-                        e.getPlayer().sendMessage(new TextComponent(ChatColor.YELLOW + "自動でサーバーに接続されます。そのままお待ちください。"));
+                    e.getPlayer().sendMessage(new TextComponent(ChatColor.YELLOW + "自動でサーバーに接続されます。そのままお待ちください。"));
                 } else this.cancel();
             }
         };
