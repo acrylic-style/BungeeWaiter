@@ -226,11 +226,6 @@ public class BungeeWaiter extends Plugin implements Listener {
                     LOGGER.warning(e.getPlayer().getName() + "'s server is null");
                     return;
                 }
-                if (isTargetOnline) {
-                    if (e.getPlayer().getServer().getInfo().getName().equalsIgnoreCase(limbo)) {
-                        e.getPlayer().connect(getProxy().getServerInfo(target));
-                    }
-                }
                 if (e.getPlayer().getServer().getInfo().getName().equalsIgnoreCase(limbo)) {
                     e.getPlayer().sendMessage(new TextComponent(ChatColor.YELLOW + "自動でサーバーに接続されます。そのままお待ちください。"));
                 } else this.cancel();
@@ -238,5 +233,14 @@ public class BungeeWaiter extends Plugin implements Listener {
         };
         tasks.put(e.getPlayer().getUniqueId(), task);
         timer.schedule(task, 100, 30000); // give a small delay
+        timer.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                if (!e.getPlayer().isConnected()) this.cancel();
+                if (e.getPlayer().getServer().getInfo().getName().equalsIgnoreCase(limbo)) {
+                    e.getPlayer().disconnect(new TextComponent(ChatColor.YELLOW + "イベントサーバーが3分間開かなかったため自動的に切断されました。"));
+                }
+            }
+        }, 1000*60*3);
     }
 }
