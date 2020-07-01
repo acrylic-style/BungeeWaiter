@@ -241,6 +241,6 @@ public class BungeeWaiter extends Plugin implements Listener {
                     e.getPlayer().disconnect(new TextComponent(ChatColor.YELLOW + "イベントサーバーが3分間開かなかったため自動的に切断されました。"));
                 }
             }
-        }, 1000*60*3);
+        }, 1000*60*5);
     }
 }
