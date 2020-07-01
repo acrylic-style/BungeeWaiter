@@ -189,6 +189,13 @@ public class BungeeWaiter extends Plugin implements Listener {
         return country.get(((InetSocketAddress) addr).getAddress().getHostAddress());
     }
 
+    public static MCVersion getReleaseVersionIfPossible(int protocolVersion) {
+        CollectionList<MCVersion> list = ICollectionList.asList(MCVersion.getByProtocolVersion(protocolVersion));
+        return list.filter(v -> !v.isSnapshot()).size() == 0 // if non-snapshot version wasn't found
+                ? Objects.requireNonNull(list.first()) // return the last version anyway
+                : Objects.requireNonNull(list.filter(v -> !v.isSnapshot()).first()); // return non-snapshot version instead
+    }
+
     @EventHandler
     public void onServerConnected(ServerConnectedEvent e) {
         boolean kicked = kickQueue.remove(e.getPlayer().getUniqueId());
@@ -198,7 +205,7 @@ public class BungeeWaiter extends Plugin implements Listener {
         String country = getCountry(e.getPlayer());
         if (country != null) country = ", " + country;
         if (country == null) country = "";
-        String version = Objects.requireNonNull(ICollectionList.asList(MCVersion.getByProtocolVersion(e.getPlayer().getPendingConnection().getVersion())).first()).getName();
+        String version = getReleaseVersionIfPossible(e.getPlayer().getPendingConnection().getVersion()).getName();
         TextComponent tc = new TextComponent(PREFIX + e.getPlayer().getName() + ChatColor.GRAY + "[" + version + country + "]"
                 + ChatColor.YELLOW + ": " + name + " -> " + target + (kicked ? ChatColor.GRAY + " (kicked from " + name + ")" : ""));
         getProxy().getPlayers().forEach(player -> {

@@ -10,8 +10,6 @@ import net.md_5.bungee.api.plugin.TabExecutor;
 import util.CollectionList;
 import util.ICollectionList;
 
-import java.util.Collections;
-
 public class TellCommand extends Command implements TabExecutor {
     public TellCommand() {
         super("gtell", null, "gw", "gmsg");
@@ -41,8 +39,6 @@ public class TellCommand extends Command implements TabExecutor {
 
     @Override
     public Iterable<String> onTabComplete(CommandSender sender, String[] args) {
-        if (args.length == 0) return new CollectionList<>(ProxyServer.getInstance().getPlayers()).map(ProxiedPlayer::getName);
-        if (args.length == 1) return new CollectionList<>(ProxyServer.getInstance().getPlayers()).map(ProxiedPlayer::getName).filter(s -> s.toLowerCase().startsWith(args[0].toLowerCase()));
-        return Collections.emptyList();
+        return VersionsCommand.playerTabCompleter(args);
     }
 }
