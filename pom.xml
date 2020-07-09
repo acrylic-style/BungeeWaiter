@@ -76,7 +76,7 @@
         <dependency>
             <groupId>xyz.acrylicstyle</groupId>
             <artifactId>minecraft-util</artifactId>
-            <version>0.0.5</version>
+            <version>0.0.6a</version>
         </dependency>
     </dependencies>
 </project>
