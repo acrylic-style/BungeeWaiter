@@ -8,3 +8,5 @@ commands:
     permission: "bungeewaiter.notification"
   versions:
     permission: "bungeewaiter.versions"
+  salert:
+    permission: "bungeewaiter.salert"

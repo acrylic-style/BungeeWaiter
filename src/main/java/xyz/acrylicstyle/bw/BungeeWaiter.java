@@ -23,6 +23,7 @@ import util.CollectionList;
 import util.ICollectionList;
 import util.JSONAPI;
 import util.StringCollection;
+import xyz.acrylicstyle.bw.commands.SAlertCommand;
 import xyz.acrylicstyle.bw.commands.TellCommand;
 import xyz.acrylicstyle.bw.commands.VersionsCommand;
 import xyz.acrylicstyle.mcutil.lang.MCVersion;
@@ -90,6 +91,7 @@ public class BungeeWaiter extends Plugin implements Listener {
         });
         getProxy().getPluginManager().registerCommand(this, new TellCommand());
         getProxy().getPluginManager().registerCommand(this, new VersionsCommand());
+        getProxy().getPluginManager().registerCommand(this, new SAlertCommand());
         getProxy().getPluginManager().registerCommand(this, new Command("notification", "bungeewaiter.notification") {
             @Override
             public void execute(CommandSender sender, String[] args) {
@@ -159,6 +161,8 @@ public class BungeeWaiter extends Plugin implements Listener {
     public void onServerKick(ServerKickEvent e) {
         kickQueue.add(e.getPlayer().getUniqueId());
         if (e.getPlayer().getServer() == null) return;
+        e.getPlayer().sendMessage(new TextComponent(ChatColor.RED + "サーバーからキックされました:"));
+        e.getPlayer().sendMessage(e.getKickReasonComponent());
         String currentServer = e.getPlayer().getServer().getInfo().getName();
         String target = getServerMap().get(currentServer.toLowerCase());
         if (target == null) return;
@@ -177,9 +181,11 @@ public class BungeeWaiter extends Plugin implements Listener {
     public void onPreLogin(PreLoginEvent e) {
         if (config.getString("apiKey") == null) return;
         if (!(e.getConnection().getSocketAddress() instanceof InetSocketAddress)) return;
-        String address = ((InetSocketAddress) e.getConnection().getSocketAddress()).getAddress().getHostAddress();
-        JSONObject response = (JSONObject) new JSONAPI("http://api.ipstack.com/" + address + "?access_key=" + config.getString("apiKey")).call(JSONObject.class).getResponse();
-        country.add(address, response.getString("country_code"));
+        try {
+            String address = ((InetSocketAddress) e.getConnection().getSocketAddress()).getAddress().getHostAddress();
+            JSONObject response = (JSONObject) new JSONAPI("http://api.ipstack.com/" + address + "?access_key=" + config.getString("apiKey")).call(JSONObject.class).getResponse();
+            country.add(address, response.getString("country_code"));
+        } catch (RuntimeException ignored) {} // ignore, probably rate limited
     }
 
     @Nullable
