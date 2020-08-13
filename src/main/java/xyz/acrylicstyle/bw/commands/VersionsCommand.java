@@ -9,7 +9,9 @@ import net.md_5.bungee.api.plugin.Command;
 import net.md_5.bungee.api.plugin.TabExecutor;
 import org.jetbrains.annotations.NotNull;
 import util.CollectionList;
+import util.CollectionSet;
 import util.ICollectionList;
+import util.MultiCollection;
 import xyz.acrylicstyle.bw.BungeeWaiter;
 import xyz.acrylicstyle.mcutil.lang.MCVersion;
 
@@ -27,11 +29,15 @@ public class VersionsCommand extends Command implements TabExecutor {
     public void execute(CommandSender sender, String[] args) {
         if (args.length == 0) {
             CollectionList<String> messages = new CollectionList<>();
+            CollectionSet<MCVersion> versions = new CollectionSet<>();
+            MultiCollection<MCVersion, String> players = new MultiCollection<>();
             ProxyServer.getInstance().getPlayers().forEach(player -> {
-                MCVersion version = ICollectionList.asList(MCVersion.getByProtocolVersion(player.getPendingConnection().getVersion())).first();
-                assert version != null;
-                messages.add(ChatColor.YELLOW + player.getName() + ChatColor.AQUA + ": " + (version.isModern() ? ChatColor.GREEN : ChatColor.YELLOW) + version.getName() + "\n");
+                MCVersion v = BungeeWaiter.getReleaseVersionIfPossible(player.getPendingConnection().getVersion());
+                versions.add(v);
+                players.add(v, player.getName());
             });
+            versions.sort((a, b) -> b.getProtocolVersion() - a.getProtocolVersion());
+            versions.forEach(version -> messages.add(ChatColor.LIGHT_PURPLE + "[" + (version.isModern() ? ChatColor.GREEN : ChatColor.YELLOW) + version.getName() + ChatColor.LIGHT_PURPLE + "]" + ChatColor.WHITE + ": " + ChatColor.GREEN + players.get(version).join(ChatColor.YELLOW + ", " + ChatColor.GREEN)));
             sender.sendMessage(messages.map((Function<String, TextComponent>) TextComponent::new).toArray(new TextComponent[0]));
         } else {
             ProxiedPlayer player = ProxyServer.getInstance().getPlayer(args[0]);

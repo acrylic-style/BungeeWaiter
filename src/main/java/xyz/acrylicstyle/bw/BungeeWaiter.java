@@ -226,6 +226,7 @@ public class BungeeWaiter extends Plugin implements Listener {
         String kickMessage = kickQueue.remove(e.getPlayer().getUniqueId());
         Server server = e.getPlayer().getServer();
         String name = server == null || server.getInfo() == null ? "Connect" : server.getInfo().getName();
+        if (server == null || server.getInfo() == null) kickMessage = null;
         String target = e.getServer().getInfo().getName();
         String country = getCountry(e.getPlayer());
         if (country != null) country = ", " + country;
