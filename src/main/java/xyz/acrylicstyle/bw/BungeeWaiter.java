@@ -19,6 +19,7 @@ import net.md_5.bungee.event.EventHandler;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.json.JSONObject;
+import util.Collection;
 import util.CollectionList;
 import util.ICollectionList;
 import util.JSONAPI;
@@ -89,6 +90,24 @@ public class BungeeWaiter extends Plugin implements Listener {
                 });
             }
         });
+        getProxy().getPluginManager().registerCommand(this, new Command("gkick", "bungeewaiter.gkick") {
+            @Override
+            public void execute(CommandSender sender, String[] args) {
+                if (args.length == 0) {
+                    sender.sendMessage(new TextComponent(ChatColor.RED + "/gkick <player>"));
+                    return;
+                }
+                ProxiedPlayer p = getProxy().getPlayer(args[0]);
+                if (p == null) {
+                    sender.sendMessage(new TextComponent(ChatColor.RED + "Could not find player."));
+                    return;
+                }
+                CollectionList<String> list = ICollectionList.asList(args);
+                list.shift();
+                String reason = list.join(" ");
+                p.disconnect(new TextComponent(ChatColor.translateAlternateColorCodes('&', reason)));
+            }
+        });
         getProxy().getPluginManager().registerCommand(this, new TellCommand());
         getProxy().getPluginManager().registerCommand(this, new VersionsCommand());
         getProxy().getPluginManager().registerCommand(this, new SAlertCommand());
@@ -151,7 +170,7 @@ public class BungeeWaiter extends Plugin implements Listener {
         });
     }
 
-    public static final CollectionList<UUID> kickQueue = new CollectionList<>();
+    public static final Collection<UUID, String> kickQueue = new Collection<>();
 
     public StringCollection<String> getServerMap() {
         return new StringCollection<>(ICollectionList.asList(config.getStringList("servers")).toMap(s -> s.split(":")[0], s -> s.split(":")[1]).mapKeys((s, o) -> s.toLowerCase()));
@@ -159,7 +178,7 @@ public class BungeeWaiter extends Plugin implements Listener {
 
     @EventHandler
     public void onServerKick(ServerKickEvent e) {
-        kickQueue.add(e.getPlayer().getUniqueId());
+        kickQueue.add(e.getPlayer().getUniqueId(), TextComponent.toLegacyText(e.getKickReasonComponent()));
         if (e.getPlayer().getServer() == null) return;
         e.getPlayer().sendMessage(new TextComponent(ChatColor.RED + "サーバーからキックされました:"));
         e.getPlayer().sendMessage(e.getKickReasonComponent());
@@ -183,7 +202,7 @@ public class BungeeWaiter extends Plugin implements Listener {
         if (!(e.getConnection().getSocketAddress() instanceof InetSocketAddress)) return;
         try {
             String address = ((InetSocketAddress) e.getConnection().getSocketAddress()).getAddress().getHostAddress();
-            JSONObject response = (JSONObject) new JSONAPI("http://api.ipstack.com/" + address + "?access_key=" + config.getString("apiKey")).call(JSONObject.class).getResponse();
+            JSONObject response = new JSONAPI("http://api.ipstack.com/" + address + "?access_key=" + config.getString("apiKey")).call(JSONObject.class).getResponse();
             country.add(address, response.getString("country_code"));
         } catch (RuntimeException ignored) {} // ignore, probably rate limited
     }
@@ -204,7 +223,7 @@ public class BungeeWaiter extends Plugin implements Listener {
 
     @EventHandler
     public void onServerConnected(ServerConnectedEvent e) {
-        boolean kicked = kickQueue.remove(e.getPlayer().getUniqueId());
+        String kickMessage = kickQueue.remove(e.getPlayer().getUniqueId());
         Server server = e.getPlayer().getServer();
         String name = server == null || server.getInfo() == null ? "Connect" : server.getInfo().getName();
         String target = e.getServer().getInfo().getName();
@@ -213,7 +232,7 @@ public class BungeeWaiter extends Plugin implements Listener {
         if (country == null) country = "";
         String version = getReleaseVersionIfPossible(e.getPlayer().getPendingConnection().getVersion()).getName();
         TextComponent tc = new TextComponent(PREFIX + e.getPlayer().getName() + ChatColor.GRAY + "[" + version + country + "]"
-                + ChatColor.YELLOW + ": " + name + " -> " + target + (kicked ? ChatColor.GRAY + " (kicked from " + name + ")" : ""));
+                + ChatColor.YELLOW + ": " + name + " -> " + target + (kickMessage != null ? ChatColor.GRAY + " (kicked from " + name + ": " + kickMessage + ")" : ""));
         getProxy().getPlayers().forEach(player -> {
             if (player.hasPermission("bungeewaiter.logging") || player.hasPermission("bungeewaiter.notification")) {
                 if (!notification.contains(player.getUniqueId())) {
