@@ -104,7 +104,7 @@ public class BungeeWaiter extends Plugin implements Listener {
                 }
                 CollectionList<String> list = ICollectionList.asList(args);
                 list.shift();
-                String reason = list.join(" ");
+                String reason = list.size() == 0 ? "You have been kicked by an operator." : list.join(" ");
                 p.disconnect(new TextComponent(ChatColor.translateAlternateColorCodes('&', reason)));
             }
         });
