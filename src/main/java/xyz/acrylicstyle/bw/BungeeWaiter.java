@@ -53,6 +53,7 @@ public class BungeeWaiter extends Plugin implements Listener {
     public static boolean isTargetOnline = false;
     public static Map<UUID, TimerTask> tasks = new HashMap<>();
     public static final List<UUID> notification = new ArrayList<>(); // invert
+    public static CollectionList<UUID> noWarp = new CollectionList<>();
 
     @Override
     public void onEnable() {
@@ -64,6 +65,7 @@ public class BungeeWaiter extends Plugin implements Listener {
         config.getStringList("notification").forEach(s -> notification.add(UUID.fromString(s)));
         limbo = config.getString("limbo", "LIMBO");
         target = config.getString("target");
+        noWarp = ICollectionList.asList(config.getStringList("nowarp")).map(UUID::fromString);
         if (target == null) {
             LOGGER.warning("Please specify target and limbo at plugins/BungeeWaiter/config.yml.");
             LOGGER.warning("Using the default value 'server' for target, LIMBO for limbo if undefined.");
@@ -84,6 +86,7 @@ public class BungeeWaiter extends Plugin implements Listener {
                     isTargetOnline = throwable == null;
                     if (isTargetOnline) {
                         getProxy().getPlayers().forEach(player -> {
+                            if (noWarp.contains(player.getUniqueId())) return;
                             if (player.getServer().getInfo().getName().equalsIgnoreCase(limbo)) player.connect(getProxy().getServerInfo(target));
                         });
                     }
