@@ -38,8 +38,8 @@ public class VersionsCommand extends Command implements TabExecutor {
             });
             CollectionList<MCVersion> versions2 = ICollectionList.asList(versions);
             versions2.sort((a, b) -> b.getProtocolVersion() - a.getProtocolVersion());
-            versions2.forEach(version -> messages.add(ChatColor.LIGHT_PURPLE + "[" + (version.isModern() ? ChatColor.GREEN : ChatColor.YELLOW) + version.getName() + ChatColor.LIGHT_PURPLE + "] " + ChatColor.YELLOW + "(" + ChatColor.RED + players.get(version).size() + ChatColor.YELLOW + ")" + ChatColor.WHITE + ": " + ChatColor.GREEN + players.get(version).join(ChatColor.YELLOW + ", " + ChatColor.GREEN) + "\n"));
-            sender.sendMessage(messages.map((Function<String, TextComponent>) TextComponent::new).toArray(new TextComponent[0]));
+            versions2.forEach(version -> messages.add(ChatColor.LIGHT_PURPLE + "[" + (version.isModern() ? ChatColor.GREEN : ChatColor.YELLOW) + version.getName() + ChatColor.LIGHT_PURPLE + "] " + ChatColor.YELLOW + "(" + ChatColor.RED + players.get(version).size() + ChatColor.YELLOW + ")" + ChatColor.WHITE + ": " + ChatColor.GREEN + players.get(version).join(ChatColor.YELLOW + ", " + ChatColor.GREEN)));
+            messages.map((Function<String, TextComponent>) TextComponent::new).forEach(sender::sendMessage);
         } else {
             ProxiedPlayer player = ProxyServer.getInstance().getPlayer(args[0]);
             if (player == null) {

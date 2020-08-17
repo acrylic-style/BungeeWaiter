@@ -24,6 +24,7 @@ import util.CollectionList;
 import util.ICollectionList;
 import util.JSONAPI;
 import util.StringCollection;
+import xyz.acrylicstyle.bw.commands.GKickCommand;
 import xyz.acrylicstyle.bw.commands.SAlertCommand;
 import xyz.acrylicstyle.bw.commands.TellCommand;
 import xyz.acrylicstyle.bw.commands.VersionsCommand;
@@ -93,24 +94,7 @@ public class BungeeWaiter extends Plugin implements Listener {
                 });
             }
         });
-        getProxy().getPluginManager().registerCommand(this, new Command("gkick", "bungeewaiter.gkick") {
-            @Override
-            public void execute(CommandSender sender, String[] args) {
-                if (args.length == 0) {
-                    sender.sendMessage(new TextComponent(ChatColor.RED + "/gkick <player>"));
-                    return;
-                }
-                ProxiedPlayer p = getProxy().getPlayer(args[0]);
-                if (p == null) {
-                    sender.sendMessage(new TextComponent(ChatColor.RED + "Could not find player."));
-                    return;
-                }
-                CollectionList<String> list = ICollectionList.asList(args);
-                list.shift();
-                String reason = list.size() == 0 ? "You have been kicked by an operator." : list.join(" ");
-                p.disconnect(new TextComponent(ChatColor.translateAlternateColorCodes('&', reason)));
-            }
-        });
+        getProxy().getPluginManager().registerCommand(this, new GKickCommand());
         getProxy().getPluginManager().registerCommand(this, new TellCommand());
         getProxy().getPluginManager().registerCommand(this, new VersionsCommand());
         getProxy().getPluginManager().registerCommand(this, new SAlertCommand());
