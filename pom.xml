@@ -33,6 +33,14 @@
                         </configuration>
                     </execution>
                 </executions>
+                <configuration>
+                    <relocations>
+                        <relocation>
+                            <pattern>xyz.acrylicstyle.sql</pattern>
+                            <shadedPattern>xyz.acrylicstyle.bw.libs.sql</shadedPattern>
+                        </relocation>
+                    </relocations>
+                </configuration>
             </plugin>
         </plugins>
     </build>
@@ -77,6 +85,11 @@
             <groupId>xyz.acrylicstyle</groupId>
             <artifactId>minecraft-util</artifactId>
             <version>0.0.7</version>
+        </dependency>
+        <dependency>
+            <groupId>xyz.acrylicstyle</groupId>
+            <artifactId>sequelize4j</artifactId>
+            <version>0.3.2</version>
         </dependency>
     </dependencies>
 </project>
