@@ -2,8 +2,6 @@ name: BungeeWaiter
 version: "1.0"
 main: xyz.acrylicstyle.bw.BungeeWaiter
 commands:
-  event:
-    description: "aaa"
   notification:
     permission: "bungeewaiter.notification"
   versions:
