@@ -181,10 +181,12 @@ public class BungeeWaiter extends Plugin implements Listener {
         e.getPlayer().sendMessage(new TextComponent(ChatColor.RED + "サーバーからキックされました:"));
         e.getPlayer().sendMessage(e.getKickReasonComponent());
         String currentServer = e.getPlayer().getServer().getInfo().getName();
-        String target = serversMap.get(currentServer.toLowerCase());
+        String target = serversMap.filter(v -> v.equalsIgnoreCase(currentServer)).firstKey();
         if (target == null) return;
+        ServerInfo targetServer = getProxy().getServerInfo(target);
+        if (targetServer == null) return;
         e.setCancelled(true);
-        e.setCancelServer(getProxy().getServerInfo(target));
+        e.setCancelServer(targetServer);
         getProxy().getScheduler().schedule(this, () -> {
             if (e.getPlayer().getServer().getInfo().getName().equals(currentServer)) {
                 e.getPlayer().connect(getProxy().getServerInfo(currentServer));
