@@ -103,7 +103,7 @@ public class BungeeWaiter extends Plugin implements Listener {
         TimerTask task = new TimerTask() {
             @Override
             public void run() {
-                serversMap.forEach((target, limbo) -> {
+                serversMap.forEach((limbo, target) -> {
                     ServerInfo info = ProxyServer.getInstance().getServerInfo(target);
                     if (info == null) {
                         log.warning("Could not get server info for " + target);
