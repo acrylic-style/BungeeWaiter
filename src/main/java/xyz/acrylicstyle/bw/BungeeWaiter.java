@@ -142,11 +142,15 @@ public class BungeeWaiter extends Plugin implements Listener {
     public void onPlayerDisconnect(PlayerDisconnectEvent e) {
         kickQueue.remove(e.getPlayer().getUniqueId());
         Server server = e.getPlayer().getServer();
-        String version = getReleaseVersionIfPossible(e.getPlayer().getPendingConnection().getVersion()).getName();
+        String version = "unknown";
+        try {
+            version = getReleaseVersionIfPossible(e.getPlayer().getPendingConnection().getVersion()).getName();
+        } catch (RuntimeException ignore) {}
         String name = server == null || server.getInfo() == null ? "Connect" : server.getInfo().getName();
+        String finalVersion = version;
         getProxy().getPlayers().forEach(player -> {
             if (player.hasPermission("bungeewaiter.logging") || player.hasPermission("bungeewaiter.notification")) {
-                player.sendMessage(new TextComponent(PREFIX + e.getPlayer().getName() + ChatColor.GRAY  + "[" + version + "]" + ChatColor.YELLOW + ": " + name + " -> Disconnect"));
+                player.sendMessage(new TextComponent(PREFIX + e.getPlayer().getName() + ChatColor.GRAY  + "[" + finalVersion + "]" + ChatColor.YELLOW + ": " + name + " -> Disconnect"));
             }
         });
     }
