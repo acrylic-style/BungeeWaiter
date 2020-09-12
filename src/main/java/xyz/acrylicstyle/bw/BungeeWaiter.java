@@ -51,9 +51,22 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.logging.Logger;
 
 public class BungeeWaiter extends Plugin implements Listener {
+    static {
+        try {
+            Class.forName("util.JSONAPI");
+            Class.forName("util.CollectionSet");
+            Class.forName("util.CollectionList");
+            Class.forName("util.ICollectionList");
+            Class.forName("util.promise.Promise");
+            Class.forName("util.MultiCollection");
+            Class.forName("xyz.acrylicstyle.mcutil.lang.MCVersion");
+        } catch (ClassNotFoundException ignore) {}
+    }
+
     public static final String PREFIX = ChatColor.GREEN + "[" + ChatColor.AQUA + "BungeeWaiter" + ChatColor.GREEN + "] " + ChatColor.YELLOW;
     public static Logger log;
     public static Configuration config = null;
@@ -181,10 +194,13 @@ public class BungeeWaiter extends Plugin implements Listener {
         e.getPlayer().sendMessage(new TextComponent(ChatColor.RED + "サーバーからキックされました:"));
         e.getPlayer().sendMessage(e.getKickReasonComponent());
         String currentServer = e.getPlayer().getServer().getInfo().getName();
-        String target = serversMap.filter(v -> v.equalsIgnoreCase(currentServer)).firstKey();
+        String target = filter(serversMap, v -> v.equalsIgnoreCase(currentServer)).firstKey();
         if (target == null) return;
         ServerInfo targetServer = getProxy().getServerInfo(target);
-        if (targetServer == null) return;
+        if (targetServer == null) {
+            log.warning("Couldn't find " + target + " server as fallback!");
+            return;
+        }
         e.setCancelled(true);
         e.setCancelServer(targetServer);
         getProxy().getScheduler().schedule(this, () -> {
@@ -192,6 +208,15 @@ public class BungeeWaiter extends Plugin implements Listener {
                 e.getPlayer().connect(getProxy().getServerInfo(currentServer));
             }
         }, 5, TimeUnit.SECONDS);
+    }
+
+    public static StringCollection<String> filter(StringCollection<String> thiz, Function<String, Boolean> filter) {
+        StringCollection<String> newList = new StringCollection<>();
+        CollectionList<String> keys = thiz.keysList();
+        thiz.foreach((v, i) -> {
+            if (filter.apply(v)) newList.put(keys.get(i), v);
+        });
+        return newList.clone();
     }
 
     @EventHandler
@@ -202,7 +227,7 @@ public class BungeeWaiter extends Plugin implements Listener {
             String address = ((InetSocketAddress) e.getConnection().getSocketAddress()).getAddress().getHostAddress();
             db.needsUpdate(address).then(update -> {
                 if (!update) return null; // if it doesn't needs to update country data, return
-                JSONObject response = new JSONAPI("http://api.ipstack.com/" + address + "?access_key=" + config.getString("apiKey")).call(JSONObject.class).getResponse();
+                JSONObject response = new JSONAPI("http://api.ipstack.com/" + address.replaceFirst("(.*)%.*", "$1") + "?access_key=" + config.getString("apiKey")).call(JSONObject.class).getResponse();
                 db.setCountry(address, response.getString("country_code")).queue();
                 return null;
             }).queue();
