@@ -251,7 +251,7 @@ public class BungeeWaiter extends Plugin implements Listener {
     @EventHandler
     public void onServerConnected(ServerConnectedEvent e) {
         String kickMessage = kickQueue.remove(e.getPlayer().getUniqueId());
-        if (kickMessage.startsWith("[Proxy] Lost connection to server.")) return;
+        if (kickMessage != null && kickMessage.startsWith("[Proxy] Lost connection to server.")) return;
         Server server = e.getPlayer().getServer();
         String name = server == null || server.getInfo() == null ? "Connect" : server.getInfo().getName();
         if (server == null || server.getInfo() == null) kickMessage = null;
