@@ -153,22 +153,24 @@ public class BungeeWaiter extends Plugin implements Listener {
 
     @EventHandler
     public void onPlayerDisconnect(PlayerDisconnectEvent e) {
-        kickQueue.remove(e.getPlayer().getUniqueId());
+        KickData kickData = kickQueue.remove(e.getPlayer().getUniqueId());
         Server server = e.getPlayer().getServer();
         String version = "unknown";
         try {
             version = getReleaseVersionIfPossible(e.getPlayer().getPendingConnection().getVersion()).getName();
         } catch (RuntimeException ignore) {}
         String name = server == null || server.getInfo() == null ? "Connect" : server.getInfo().getName();
+        String kickMessage = name.equals(kickData.getServer()) ? kickData.getMessage() : null;
         String finalVersion = version;
+        String extra = kickMessage != null ? ChatColor.GRAY + " (kicked from " + kickData.getServer() + ": " + kickData.getMessage() + ")" : "";
         getProxy().getPlayers().forEach(player -> {
             if (player.hasPermission("bungeewaiter.logging") || player.hasPermission("bungeewaiter.notification")) {
-                player.sendMessage(new TextComponent(PREFIX + e.getPlayer().getName() + ChatColor.GRAY  + "[" + finalVersion + "]" + ChatColor.YELLOW + ": " + name + " -> Disconnect"));
+                player.sendMessage(new TextComponent(PREFIX + e.getPlayer().getName() + ChatColor.GRAY  + "[" + finalVersion + "]" + ChatColor.YELLOW + ": " + name + " -> Disconnect" + extra));
             }
         });
     }
 
-    public static final Collection<UUID, String> kickQueue = new Collection<>();
+    public static final Collection<UUID, KickData> kickQueue = new Collection<>();
 
     public static StringCollection<String> serversMap = new StringCollection<>();
 
@@ -189,8 +191,8 @@ public class BungeeWaiter extends Plugin implements Listener {
 
     @EventHandler
     public void onServerKick(ServerKickEvent e) {
-        kickQueue.add(e.getPlayer().getUniqueId(), TextComponent.toLegacyText(e.getKickReasonComponent()));
-        if (e.getPlayer().getServer() == null) return;
+        if (e.getPlayer().getServer() == null || e.getPlayer().getServer().getInfo() == null) return;
+        kickQueue.add(e.getPlayer().getUniqueId(), new KickData(e.getPlayer().getServer().getInfo().getName(), TextComponent.toLegacyText(e.getKickReasonComponent())));
         e.getPlayer().sendMessage(new TextComponent(ChatColor.RED + "サーバーからキックされました:"));
         e.getPlayer().sendMessage(e.getKickReasonComponent());
         String currentServer = e.getPlayer().getServer().getInfo().getName();
@@ -250,11 +252,11 @@ public class BungeeWaiter extends Plugin implements Listener {
 
     @EventHandler
     public void onServerConnected(ServerConnectedEvent e) {
-        String kickMessage = kickQueue.remove(e.getPlayer().getUniqueId());
-        if (kickMessage != null && kickMessage.startsWith("[Proxy] Lost connection to server.")) return;
+        KickData kickData = kickQueue.remove(e.getPlayer().getUniqueId());
+        if (!e.getPlayer().isConnected()) return;
         Server server = e.getPlayer().getServer();
         String name = server == null || server.getInfo() == null ? "Connect" : server.getInfo().getName();
-        if (server == null || server.getInfo() == null) kickMessage = null;
+        String kickMessage = name.equals(kickData.getServer()) ? kickData.getMessage() : null;
         String target = e.getServer().getInfo().getName();
         String country = getCountry(e.getPlayer()).complete();
         if (country != null) country = ", " + country;
@@ -271,7 +273,7 @@ public class BungeeWaiter extends Plugin implements Listener {
             }
         }
         TextComponent tc = new TextComponent(PREFIX + e.getPlayer().getName() + ChatColor.GRAY + "[" + version + iptype + country + "]"
-                + ChatColor.YELLOW + ": " + name + " -> " + target + (kickMessage != null ? ChatColor.GRAY + " (kicked from " + name + ": " + kickMessage + ")" : ""));
+                + ChatColor.YELLOW + ": " + name + " -> " + target + (kickMessage != null ? ChatColor.GRAY + " (kicked from " + kickData.getServer() + ": " + kickMessage + ")" : ""));
         getProxy().getPlayers().forEach(player -> {
             if (player.hasPermission("bungeewaiter.logging") || player.hasPermission("bungeewaiter.notification")) {
                 if (!notification.contains(player.getUniqueId())) {
