@@ -56,6 +56,9 @@ public class VersionsCommand extends Command implements TabExecutor {
             sender.sendMessage(new TextComponent(ChatColor.YELLOW + " - Snapshot: " + bool(version.isSnapshot())));
             sender.sendMessage(new TextComponent(ChatColor.YELLOW + " - Release Candidate: " + bool(version.isReleaseCandidate())));
             sender.sendMessage(new TextComponent(ChatColor.YELLOW + " - Protocol Version: " + ChatColor.RED + player.getPendingConnection().getVersion()));
+            sender.sendMessage(new TextComponent(ChatColor.YELLOW + " - Connection Type: " + BungeeWaiter.getConnectionTypeColored(player)));
+            String path = BungeeWaiter.getConnectionPath(player);
+            if (path != null) sender.sendMessage(new TextComponent(ChatColor.YELLOW + " - Connection Path: " + ChatColor.GREEN + path));
         }
     }
 

@@ -1,5 +1,6 @@
 package xyz.acrylicstyle.bw;
 
+import io.netty.channel.unix.DomainSocketAddress;
 import net.md_5.bungee.api.ChatColor;
 import net.md_5.bungee.api.CommandSender;
 import net.md_5.bungee.api.ProxyServer;
@@ -236,10 +237,16 @@ public class BungeeWaiter extends Plugin implements Listener {
         } catch (RuntimeException ignored) {}
     }
 
+    public static final String SOCKET = null;
+
     @NotNull
     public Promise<@Nullable String> getCountry(@NotNull ProxiedPlayer player) {
         SocketAddress addr = player.getPendingConnection().getSocketAddress();
-        if (!(addr instanceof InetSocketAddress)) return Promise.of(null);
+        if (addr instanceof DomainSocketAddress) return Promise.of(SOCKET);
+        if (!(addr instanceof InetSocketAddress)) {
+            log.info("Ignoring unknown socket(from " + player.getName() + "): " + addr.getClass().getCanonicalName());
+            return Promise.of(null);
+        }
         return db.getCountry(((InetSocketAddress) addr).getAddress().getHostAddress());
     }
 
@@ -248,6 +255,50 @@ public class BungeeWaiter extends Plugin implements Listener {
         return list.filter(v -> !v.isSnapshot()).size() == 0 // if non-snapshot version wasn't found
                 ? Objects.requireNonNull(list.first()) // return the last version anyway
                 : Objects.requireNonNull(list.filter(v -> !v.isSnapshot()).first()); // return non-snapshot version instead
+    }
+
+    public static String getConnectionType(ProxiedPlayer player) {
+        SocketAddress addr = player.getSocketAddress();
+        if (addr instanceof InetSocketAddress) {
+            InetAddress address = ((InetSocketAddress) addr).getAddress();
+            if (address instanceof Inet4Address) {
+                return "IPv4";
+            } else if (address instanceof Inet6Address) {
+                return "IPv6";
+            } else {
+                return "Unknown (" + address.getClass().getSimpleName() + ")";
+            }
+        } else if (addr instanceof DomainSocketAddress) {
+            return "Unix Domain Socket";
+        } else {
+            return "Unknown (" + addr.getClass().getSimpleName() + ")";
+        }
+    }
+
+    public static String getConnectionTypeColored(ProxiedPlayer player) {
+        SocketAddress addr = player.getSocketAddress();
+        if (addr instanceof InetSocketAddress) {
+            InetAddress address = ((InetSocketAddress) addr).getAddress();
+            if (address instanceof Inet4Address) {
+                return ChatColor.AQUA + "IPv4";
+            } else if (address instanceof Inet6Address) {
+                return ChatColor.GREEN + "IPv6";
+            } else {
+                return ChatColor.GRAY + "Unknown (" + address.getClass().getSimpleName() + ")";
+            }
+        } else if (addr instanceof DomainSocketAddress) {
+            return ChatColor.DARK_PURPLE + "Unix Domain Socket";
+        } else {
+            return ChatColor.GRAY + "Unknown (" + addr.getClass().getSimpleName() + ")";
+        }
+    }
+
+    public static String getConnectionPath(ProxiedPlayer player) {
+         SocketAddress addr = player.getSocketAddress();
+         if (addr instanceof DomainSocketAddress) {
+             return ((DomainSocketAddress) addr).path();
+         }
+         return null;
     }
 
     @EventHandler
@@ -262,16 +313,7 @@ public class BungeeWaiter extends Plugin implements Listener {
         if (country != null) country = ", " + country;
         if (country == null) country = "";
         String version = getReleaseVersionIfPossible(e.getPlayer().getPendingConnection().getVersion()).getName();
-        SocketAddress address = e.getPlayer().getPendingConnection().getSocketAddress();
-        String iptype = "";
-        if (address instanceof InetSocketAddress) {
-            InetAddress addr = ((InetSocketAddress) address).getAddress();
-            if (addr instanceof Inet6Address) {
-                iptype = ", IPv6";
-            } else if (addr instanceof Inet4Address) {
-                iptype = ", IPv4";
-            }
-        }
+        String iptype = ", " + getConnectionType(e.getPlayer());
         TextComponent tc = new TextComponent(PREFIX + e.getPlayer().getName() + ChatColor.GRAY + "[" + version + iptype + country + "]"
                 + ChatColor.YELLOW + ": " + name + " -> " + target + (kickMessage != null ? ChatColor.GRAY + " (kicked from " + kickData.getServer() + ": " + kickMessage + ")" : ""));
         getProxy().getPlayers().forEach(player -> {
