@@ -10,6 +10,7 @@ import net.md_5.bungee.api.plugin.TabExecutor;
 import org.jetbrains.annotations.NotNull;
 import util.CollectionList;
 import util.CollectionSet;
+import util.ICollection;
 import util.ICollectionList;
 import util.MultiCollection;
 import xyz.acrylicstyle.bw.BungeeWaiter;
@@ -46,6 +47,20 @@ public class VersionsCommand extends Command implements TabExecutor {
                 sender.sendMessage(new TextComponent(ChatColor.RED + "That player is not online."));
                 return;
             }
+            if (args.length >= 2) {
+                String subarg = args[1];
+                if (subarg.equalsIgnoreCase("mods")) {
+                    if (!player.isForgeUser()) {
+                        sender.sendMessage(new TextComponent(ChatColor.GREEN + "This player is not using Forge!"));
+                        return;
+                    }
+                    sender.sendMessage(new TextComponent(ChatColor.YELLOW + player.getName() + ChatColor.GREEN + "'s mods:"));
+                    player.getModList().forEach((mod, ver) -> sender.sendMessage(new TextComponent(ChatColor.YELLOW + " - " + ChatColor.GOLD + mod + ChatColor.DARK_GRAY + "   v" + ChatColor.GRAY + ver)));
+                } else {
+                    sender.sendMessage(new TextComponent(ChatColor.RED + "Acceptable arguments: " + ChatColor.YELLOW + SUB_ARGUMENTS.join(ChatColor.GRAY + ", " + ChatColor.YELLOW)));
+                }
+                return;
+            }
             MCVersion version = BungeeWaiter.getReleaseVersionIfPossible(player.getPendingConnection().getVersion());
             String versions = ICollectionList.asList(MCVersion.getByProtocolVersion(player.getPendingConnection().getVersion())).map(MCVersion::getName).join(ChatColor.YELLOW + ", " + ChatColor.AQUA);
             sender.sendMessage(new TextComponent(ChatColor.YELLOW + player.getName() + ChatColor.AQUA + ":"));
@@ -59,6 +74,12 @@ public class VersionsCommand extends Command implements TabExecutor {
             sender.sendMessage(new TextComponent(ChatColor.YELLOW + " - Connection Type: " + BungeeWaiter.getConnectionTypeColored(player)));
             String path = BungeeWaiter.getConnectionPath(player);
             if (path != null) sender.sendMessage(new TextComponent(ChatColor.YELLOW + " - Connection Path: " + ChatColor.GREEN + path));
+            sender.sendMessage(new TextComponent(ChatColor.YELLOW + " - Using Forge: " + bool(player.isForgeUser())));
+            if (player.isForgeUser()) {
+                sender.sendMessage(new TextComponent(ChatColor.YELLOW + " - " + ChatColor.RED + player.getModList().size() + ChatColor.YELLOW + " mods installed"));
+                String mods = ChatColor.GOLD + ICollection.asCollection(player.getModList()).valuesList().join(ChatColor.GRAY + ", " + ChatColor.GOLD);
+                sender.sendMessage(new TextComponent(ChatColor.YELLOW + " - Mods: " + mods));
+            }
         }
     }
 
@@ -67,10 +88,13 @@ public class VersionsCommand extends Command implements TabExecutor {
         return playerTabCompleter(args);
     }
 
+    private static final CollectionList<String> SUB_ARGUMENTS = new CollectionList<>("mods");
+
     @NotNull
     public static Iterable<String> playerTabCompleter(String[] args) {
         if (args.length == 0) return new CollectionList<>(ProxyServer.getInstance().getPlayers()).map(ProxiedPlayer::getName);
         if (args.length == 1) return new CollectionList<>(ProxyServer.getInstance().getPlayers()).map(ProxiedPlayer::getName).filter(s -> s.toLowerCase().startsWith(args[0].toLowerCase()));
+        if (args.length == 2) return SUB_ARGUMENTS.filter(s -> s.toLowerCase().startsWith(args[1].toLowerCase()));
         return Collections.emptyList();
     }
 }

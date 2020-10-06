@@ -154,14 +154,19 @@ public class BungeeWaiter extends Plugin implements Listener {
 
     @EventHandler
     public void onPlayerDisconnect(PlayerDisconnectEvent e) {
-        KickData kickData = kickQueue.remove(e.getPlayer().getUniqueId());
+        @Nullable KickData kickData = kickQueue.remove(e.getPlayer().getUniqueId());
         Server server = e.getPlayer().getServer();
         String version = "unknown";
         try {
             version = getReleaseVersionIfPossible(e.getPlayer().getPendingConnection().getVersion()).getName();
         } catch (RuntimeException ignore) {}
         String name = server == null || server.getInfo() == null ? "Connect" : server.getInfo().getName();
-        String kickMessage = name.equals(kickData.getServer()) ? kickData.getMessage() : null;
+        String kickMessage;
+        if (kickData == null) {
+            kickMessage = null;
+        } else {
+            kickMessage = name.equals(kickData.getServer()) ? kickData.getMessage() : null;
+        }
         String finalVersion = version;
         String extra = kickMessage != null ? ChatColor.GRAY + " (kicked from " + kickData.getServer() + ": " + kickData.getMessage() + ")" : "";
         getProxy().getPlayers().forEach(player -> {
@@ -303,11 +308,16 @@ public class BungeeWaiter extends Plugin implements Listener {
 
     @EventHandler
     public void onServerConnected(ServerConnectedEvent e) {
-        KickData kickData = kickQueue.remove(e.getPlayer().getUniqueId());
+        @Nullable KickData kickData = kickQueue.remove(e.getPlayer().getUniqueId());
         if (!e.getPlayer().isConnected()) return;
         Server server = e.getPlayer().getServer();
         String name = server == null || server.getInfo() == null ? "Connect" : server.getInfo().getName();
-        String kickMessage = name.equals(kickData.getServer()) ? kickData.getMessage() : null;
+        String kickMessage;
+        if (kickData == null) {
+            kickMessage = null;
+        } else {
+            kickMessage = name.equals(kickData.getServer()) ? kickData.getMessage() : null;
+        }
         String target = e.getServer().getInfo().getName();
         String country = getCountry(e.getPlayer()).complete();
         if (country != null) country = ", " + country;
