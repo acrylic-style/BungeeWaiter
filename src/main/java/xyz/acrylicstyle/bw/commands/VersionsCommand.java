@@ -9,15 +9,11 @@ import net.md_5.bungee.api.plugin.Command;
 import net.md_5.bungee.api.plugin.TabExecutor;
 import org.jetbrains.annotations.NotNull;
 import util.CollectionList;
-import util.CollectionSet;
-import util.ICollection;
 import util.ICollectionList;
-import util.MultiCollection;
 import xyz.acrylicstyle.bw.BungeeWaiter;
 import xyz.acrylicstyle.mcutil.lang.MCVersion;
 
 import java.util.Collections;
-import java.util.function.Function;
 
 import static xyz.acrylicstyle.bw.BungeeWaiter.bool;
 
@@ -29,18 +25,7 @@ public class VersionsCommand extends Command implements TabExecutor {
     @Override
     public void execute(CommandSender sender, String[] args) {
         if (args.length == 0) {
-            CollectionList<String> messages = new CollectionList<>();
-            CollectionSet<MCVersion> versions = new CollectionSet<>();
-            MultiCollection<MCVersion, String> players = new MultiCollection<>();
-            ProxyServer.getInstance().getPlayers().forEach(player -> {
-                MCVersion v = BungeeWaiter.getReleaseVersionIfPossible(player.getPendingConnection().getVersion());
-                versions.add(v);
-                players.add(v, player.getName());
-            });
-            CollectionList<MCVersion> versions2 = ICollectionList.asList(versions);
-            versions2.sort((a, b) -> b.getProtocolVersion() - a.getProtocolVersion());
-            versions2.forEach(version -> messages.add(ChatColor.LIGHT_PURPLE + "[" + (version.isModern() ? ChatColor.GREEN : ChatColor.YELLOW) + version.getName() + ChatColor.LIGHT_PURPLE + "] " + ChatColor.YELLOW + "(" + ChatColor.RED + players.get(version).size() + ChatColor.YELLOW + ")" + ChatColor.WHITE + ": " + ChatColor.GREEN + players.get(version).join(ChatColor.YELLOW + ", " + ChatColor.GREEN)));
-            messages.map((Function<String, TextComponent>) TextComponent::new).forEach(sender::sendMessage);
+            PlayersCommand.sendPlayersByVersion(sender);
         } else {
             ProxiedPlayer player = ProxyServer.getInstance().getPlayer(args[0]);
             if (player == null) {
@@ -71,20 +56,25 @@ public class VersionsCommand extends Command implements TabExecutor {
             sender.sendMessage(new TextComponent(ChatColor.YELLOW + " - Snapshot: " + bool(version.isSnapshot())));
             sender.sendMessage(new TextComponent(ChatColor.YELLOW + " - Release Candidate: " + bool(version.isReleaseCandidate())));
             sender.sendMessage(new TextComponent(ChatColor.YELLOW + " - Protocol Version: " + ChatColor.RED + player.getPendingConnection().getVersion()));
+            sender.sendMessage(new TextComponent(ChatColor.YELLOW + " - Virtual Host: " + ChatColor.AQUA + player.getPendingConnection().getVirtualHost().getHostName()));
+            sender.sendMessage(new TextComponent(ChatColor.YELLOW + " - Label: " + ChatColor.LIGHT_PURPLE + BungeeWaiter.getLabel(player)));
             sender.sendMessage(new TextComponent(ChatColor.YELLOW + " - Connection Type: " + BungeeWaiter.getConnectionTypeColored(player)));
             String path = BungeeWaiter.getConnectionPath(player);
             if (path != null) sender.sendMessage(new TextComponent(ChatColor.YELLOW + " - Connection Path: " + ChatColor.GREEN + path));
             sender.sendMessage(new TextComponent(ChatColor.YELLOW + " - Using Forge: " + bool(player.isForgeUser())));
+            /*
             if (player.isForgeUser()) {
                 sender.sendMessage(new TextComponent(ChatColor.YELLOW + " - " + ChatColor.RED + player.getModList().size() + ChatColor.YELLOW + " mods installed"));
                 String mods = ChatColor.GOLD + ICollection.asCollection(player.getModList()).valuesList().join(ChatColor.GRAY + ", " + ChatColor.GOLD);
                 sender.sendMessage(new TextComponent(ChatColor.YELLOW + " - Mods: " + mods));
             }
+            */
         }
     }
 
     @Override
     public Iterable<String> onTabComplete(CommandSender sender, String[] args) {
+        if (args.length == 2) return SUB_ARGUMENTS.filter(s -> s.toLowerCase().startsWith(args[1].toLowerCase()));
         return playerTabCompleter(args);
     }
 
@@ -94,7 +84,6 @@ public class VersionsCommand extends Command implements TabExecutor {
     public static Iterable<String> playerTabCompleter(String[] args) {
         if (args.length == 0) return new CollectionList<>(ProxyServer.getInstance().getPlayers()).map(ProxiedPlayer::getName);
         if (args.length == 1) return new CollectionList<>(ProxyServer.getInstance().getPlayers()).map(ProxiedPlayer::getName).filter(s -> s.toLowerCase().startsWith(args[0].toLowerCase()));
-        if (args.length == 2) return SUB_ARGUMENTS.filter(s -> s.toLowerCase().startsWith(args[1].toLowerCase()));
         return Collections.emptyList();
     }
 }

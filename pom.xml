@@ -83,7 +83,7 @@
         <dependency>
             <groupId>xyz.acrylicstyle</groupId>
             <artifactId>java-util-all</artifactId>
-            <version>0.11.26</version>
+            <version>0.11.29a</version>
         </dependency>
         <dependency>
             <groupId>xyz.acrylicstyle</groupId>
@@ -93,7 +93,7 @@
         <dependency>
             <groupId>xyz.acrylicstyle</groupId>
             <artifactId>sequelize4j</artifactId>
-            <version>0.3.2</version>
+            <version>0.3.3</version>
         </dependency>
     </dependencies>
 </project>

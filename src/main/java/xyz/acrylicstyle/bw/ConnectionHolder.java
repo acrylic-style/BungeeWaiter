@@ -19,6 +19,8 @@ import static xyz.acrylicstyle.bw.BungeeWaiter.log;
 public class ConnectionHolder extends Sequelize {
     public boolean connected = false;
     public Table ip;
+    public Table lastIpV4;
+    public Table lastIpV6;
 
     public ConnectionHolder(@NotNull String host, @NotNull String database, @NotNull String user, @NotNull String password) {
         super(host, database, user, password);
@@ -49,6 +51,16 @@ public class ConnectionHolder extends Sequelize {
                 new TableDefinition.Builder("ip", DataType.STRING).setAllowNull(false).setPrimaryKey(true).build(),
                 new TableDefinition.Builder("country", DataType.STRING).build(),
                 new TableDefinition.Builder("country_updated_date", DataType.BIGINT).setAllowNull(false).setDefaultValue(0).build(),
+        });
+        lastIpV4 = this.define("lastIpV4", new TableDefinition[]{
+                new TableDefinition.Builder("uuid", DataType.STRING).setAllowNull(false).setPrimaryKey(false).build(),
+                new TableDefinition.Builder("name", DataType.STRING).build(),
+                new TableDefinition.Builder("ip", DataType.STRING).setAllowNull(false).build(),
+        });
+        lastIpV6 = this.define("lastIpV6", new TableDefinition[]{
+                new TableDefinition.Builder("uuid", DataType.STRING).setAllowNull(false).setPrimaryKey(false).build(),
+                new TableDefinition.Builder("name", DataType.STRING).build(),
+                new TableDefinition.Builder("ip", DataType.STRING).setAllowNull(false).build(),
         });
         try {
             this.sync();

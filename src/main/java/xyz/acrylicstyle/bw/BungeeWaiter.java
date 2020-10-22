@@ -8,6 +8,7 @@ import net.md_5.bungee.api.chat.TextComponent;
 import net.md_5.bungee.api.config.ServerInfo;
 import net.md_5.bungee.api.connection.ProxiedPlayer;
 import net.md_5.bungee.api.connection.Server;
+import net.md_5.bungee.api.event.LoginEvent;
 import net.md_5.bungee.api.event.PlayerDisconnectEvent;
 import net.md_5.bungee.api.event.PreLoginEvent;
 import net.md_5.bungee.api.event.ProxyReloadEvent;
@@ -28,13 +29,16 @@ import util.ICollectionList;
 import util.JSONAPI;
 import util.StringCollection;
 import util.promise.Promise;
+import xyz.acrylicstyle.bw.commands.AltLookupCommand;
 import xyz.acrylicstyle.bw.commands.GKickCommand;
 import xyz.acrylicstyle.bw.commands.PingAllCommand;
 import xyz.acrylicstyle.bw.commands.PingCommand;
+import xyz.acrylicstyle.bw.commands.PlayersCommand;
 import xyz.acrylicstyle.bw.commands.SAlertCommand;
 import xyz.acrylicstyle.bw.commands.TellCommand;
 import xyz.acrylicstyle.bw.commands.VersionsCommand;
 import xyz.acrylicstyle.mcutil.lang.MCVersion;
+import xyz.acrylicstyle.sql.options.UpsertOptions;
 
 import java.io.File;
 import java.io.IOException;
@@ -51,7 +55,6 @@ import java.util.Objects;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.logging.Logger;
 
@@ -77,6 +80,7 @@ public class BungeeWaiter extends Plugin implements Listener {
     public static CollectionList<UUID> noWarp = new CollectionList<>();
     public static final Timer timer = new Timer();
     public static ConnectionHolder db;
+    public static final StringCollection<String> label = new StringCollection<>();
 
     @Override
     public void onEnable() {
@@ -93,6 +97,8 @@ public class BungeeWaiter extends Plugin implements Listener {
             db.connect();
         }
         config.getStringList("notification").forEach(s -> notification.add(UUID.fromString(s)));
+        getProxy().getPluginManager().registerCommand(this, new AltLookupCommand());
+        getProxy().getPluginManager().registerCommand(this, new PlayersCommand());
         getProxy().getPluginManager().registerCommand(this, new GKickCommand());
         getProxy().getPluginManager().registerCommand(this, new TellCommand());
         getProxy().getPluginManager().registerCommand(this, new VersionsCommand());
@@ -114,6 +120,7 @@ public class BungeeWaiter extends Plugin implements Listener {
             }
         });
         getProxy().getPluginManager().registerListener(this, this);
+        getProxy().registerChannel("bungeewaiter:protocol_version");
         TimerTask task = new TimerTask() {
             @Override
             public void run() {
@@ -188,12 +195,24 @@ public class BungeeWaiter extends Plugin implements Listener {
         }
         noWarp = ICollectionList.asList(config.getStringList("nowarp")).map(UUID::fromString);
         serversMap = new StringCollection<>(ICollectionList.asList(config.getStringList("servers")).toMap(s -> s.split(":")[0], s -> s.split(":")[1]).mapKeys((s, o) -> s.toLowerCase()));
+        label.clear();
+    }
+
+    @Nullable
+    public static String getLabel(@NotNull String addr) {
+        if (label.containsKey(addr)) return label.get(addr);
+        String label = config.getString("labels." + addr, null);
+        if (label != null) BungeeWaiter.label.add(addr, label);
+        return label;
+    }
+
+    @Nullable
+    public static String getLabel(@NotNull ProxiedPlayer player) {
+        return getLabel(player.getPendingConnection().getVirtualHost().getHostName());
     }
 
     @EventHandler
-    public void onProxyReload(ProxyReloadEvent e) {
-        reload();
-    }
+    public void onProxyReload(ProxyReloadEvent e) { reload(); }
 
     @EventHandler
     public void onServerKick(ServerKickEvent e) {
@@ -211,11 +230,6 @@ public class BungeeWaiter extends Plugin implements Listener {
         }
         e.setCancelled(true);
         e.setCancelServer(targetServer);
-        getProxy().getScheduler().schedule(this, () -> {
-            if (e.getPlayer().getServer().getInfo().getName().equals(currentServer)) {
-                e.getPlayer().connect(getProxy().getServerInfo(currentServer));
-            }
-        }, 5, TimeUnit.SECONDS);
     }
 
     public static StringCollection<String> filter(StringCollection<String> thiz, Function<String, Boolean> filter) {
@@ -231,8 +245,8 @@ public class BungeeWaiter extends Plugin implements Listener {
     public void onPreLogin(PreLoginEvent e) {
         if (config.getString("apiKey") == null) return;
         if (!(e.getConnection().getSocketAddress() instanceof InetSocketAddress)) return;
+        final String address = ((InetSocketAddress) e.getConnection().getSocketAddress()).getAddress().getHostAddress();
         try {
-            String address = ((InetSocketAddress) e.getConnection().getSocketAddress()).getAddress().getHostAddress();
             db.needsUpdate(address).then(update -> {
                 if (!update) return null; // if it doesn't needs to update country data, return
                 JSONObject response = new JSONAPI("http://api.ipstack.com/" + address.replaceFirst("(.*)%.*", "$1") + "?access_key=" + config.getString("apiKey")).call(JSONObject.class).getResponse();
@@ -240,6 +254,22 @@ public class BungeeWaiter extends Plugin implements Listener {
                 return null;
             }).queue();
         } catch (RuntimeException ignored) {}
+    }
+
+    @EventHandler
+    public void onLogin(LoginEvent e) {
+        if (e.getConnection().getSocketAddress() instanceof InetSocketAddress) {
+            InetAddress addr = ((InetSocketAddress) e.getConnection().getSocketAddress()).getAddress();
+            final String address = addr.getHostAddress();
+            (addr instanceof Inet4Address ? db.lastIpV4 : db.lastIpV6).upsert(
+                    new UpsertOptions.Builder()
+                            .addWhere("uuid", e.getConnection().getUniqueId().toString())
+                            .addValue("uuid", e.getConnection().getUniqueId().toString())
+                            .addValue("name", e.getConnection().getName())
+                            .addValue("ip", address)
+                            .build()
+            ).queue();
+        }
     }
 
     public static final String SOCKET = null;
@@ -323,8 +353,9 @@ public class BungeeWaiter extends Plugin implements Listener {
         if (country != null) country = ", " + country;
         if (country == null) country = "";
         String version = getReleaseVersionIfPossible(e.getPlayer().getPendingConnection().getVersion()).getName();
-        String iptype = ", " + getConnectionType(e.getPlayer());
-        TextComponent tc = new TextComponent(PREFIX + e.getPlayer().getName() + ChatColor.GRAY + "[" + version + iptype + country + "]"
+        String lab = getLabel(e.getPlayer());
+        String label = lab == null ? "" : ", " + lab;
+        TextComponent tc = new TextComponent(PREFIX + e.getPlayer().getName() + ChatColor.GRAY + "[" + version + label + country + "]"
                 + ChatColor.YELLOW + ": " + name + " -> " + target + (kickMessage != null ? ChatColor.GRAY + " (kicked from " + kickData.getServer() + ": " + kickMessage + ")" : ""));
         getProxy().getPlayers().forEach(player -> {
             if (player.hasPermission("bungeewaiter.logging") || player.hasPermission("bungeewaiter.notification")) {
