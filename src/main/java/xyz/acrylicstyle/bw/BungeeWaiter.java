@@ -31,6 +31,7 @@ import util.StringCollection;
 import util.promise.Promise;
 import xyz.acrylicstyle.bw.commands.AltLookupCommand;
 import xyz.acrylicstyle.bw.commands.GKickCommand;
+import xyz.acrylicstyle.bw.commands.IpLookupCommand;
 import xyz.acrylicstyle.bw.commands.PingAllCommand;
 import xyz.acrylicstyle.bw.commands.PingCommand;
 import xyz.acrylicstyle.bw.commands.PlayersCommand;
@@ -98,6 +99,7 @@ public class BungeeWaiter extends Plugin implements Listener {
         }
         config.getStringList("notification").forEach(s -> notification.add(UUID.fromString(s)));
         getProxy().getPluginManager().registerCommand(this, new AltLookupCommand());
+        getProxy().getPluginManager().registerCommand(this, new IpLookupCommand());
         getProxy().getPluginManager().registerCommand(this, new PlayersCommand());
         getProxy().getPluginManager().registerCommand(this, new GKickCommand());
         getProxy().getPluginManager().registerCommand(this, new TellCommand());
@@ -158,6 +160,8 @@ public class BungeeWaiter extends Plugin implements Listener {
     }
 
     public static String bool(boolean bool) { return bool ? ChatColor.GREEN + "Yes" : ChatColor.RED + "No"; }
+
+    public static String boolInverted(boolean bool) { return bool ? ChatColor.RED + "Yes" : ChatColor.GREEN + "No"; }
 
     @EventHandler
     public void onPlayerDisconnect(PlayerDisconnectEvent e) {
@@ -243,24 +247,47 @@ public class BungeeWaiter extends Plugin implements Listener {
 
     @EventHandler
     public void onPreLogin(PreLoginEvent e) {
-        if (config.getString("apiKey") == null) return;
         if (!(e.getConnection().getSocketAddress() instanceof InetSocketAddress)) return;
-        final String address = ((InetSocketAddress) e.getConnection().getSocketAddress()).getAddress().getHostAddress();
+        final String address = getAddress((InetSocketAddress) e.getConnection().getSocketAddress());
         try {
             db.needsUpdate(address).then(update -> {
                 if (!update) return null; // if it doesn't needs to update country data, return
-                JSONObject response = new JSONAPI("http://api.ipstack.com/" + address.replaceFirst("(.*)%.*", "$1") + "?access_key=" + config.getString("apiKey")).call(JSONObject.class).getResponse();
-                db.setCountry(address, response.getString("country_code")).queue();
+                if (config.get("apiKey") != null) new Thread(() -> {
+                    JSONObject response = new JSONAPI("http://api.ipstack.com/" + address + "?access_key=" + config.getString("apiKey")).call(JSONObject.class).getResponse();
+                    db.setCountry(address, response.getString("country_code"), response.getString("country_name")).queue();
+                }).start();
+                if (config.get("apiKey2") != null) new Thread(() -> {
+                    JSONObject response = new JSONAPI(String.format("https://www.ipqualityscore.com/api/json/ip/%s/%s?strictness=0&allow_public_access_points=true&lighter_penalties=true", config.getString("apiKey2"), address)).call().getResponse();
+                    if (!response.getBoolean("success")) return;
+                    String isp = response.getString("ISP");
+                    if (isp == null) isp = response.getString("isp");
+                    db.setFraud(address, response.getInt("fraud_score"), response.getBoolean("proxy"), response.getBoolean("vpn"), isp).queue();
+                }).start();
                 return null;
             }).queue();
         } catch (RuntimeException ignored) {}
+    }
+
+    public static String getAddress(InetSocketAddress address) {
+        return address.getAddress().getHostAddress().replaceFirst("(.*)%.*", "$1");
+    }
+
+    public static String getAddress(InetAddress address) {
+        return address.getHostAddress().replaceFirst("(.*)%.*", "$1");
+    }
+
+    public static String getAddress(ProxiedPlayer player) {
+        if (!(player.getSocketAddress() instanceof InetSocketAddress)) {
+            throw new IllegalArgumentException("Player " + player.getName() + " isn't connecting via InetSocketAddress");
+        }
+        return getAddress((InetSocketAddress) player.getSocketAddress());
     }
 
     @EventHandler
     public void onLogin(LoginEvent e) {
         if (e.getConnection().getSocketAddress() instanceof InetSocketAddress) {
             InetAddress addr = ((InetSocketAddress) e.getConnection().getSocketAddress()).getAddress();
-            final String address = addr.getHostAddress();
+            final String address = getAddress((InetSocketAddress) e.getConnection().getSocketAddress());
             (addr instanceof Inet4Address ? db.lastIpV4 : db.lastIpV6).upsert(
                     new UpsertOptions.Builder()
                             .addWhere("uuid", e.getConnection().getUniqueId().toString())
@@ -282,7 +309,7 @@ public class BungeeWaiter extends Plugin implements Listener {
             log.info("Ignoring unknown socket(from " + player.getName() + "): " + addr.getClass().getCanonicalName());
             return Promise.of(null);
         }
-        return db.getCountry(((InetSocketAddress) addr).getAddress().getHostAddress());
+        return db.getCountry(getAddress(player));
     }
 
     public static MCVersion getReleaseVersionIfPossible(int protocolVersion) {
@@ -350,12 +377,14 @@ public class BungeeWaiter extends Plugin implements Listener {
         }
         String target = e.getServer().getInfo().getName();
         String country = getCountry(e.getPlayer()).complete();
+        @Nullable ConnectionHolder.FraudScore score = e.getPlayer().getSocketAddress() instanceof InetSocketAddress ? db.getFraudScore(getAddress(e.getPlayer())).complete() : null;
         if (country != null) country = ", " + country;
         if (country == null) country = "";
+        if (score != null && score.vpn) country += ChatColor.GRAY + ", " + ChatColor.GOLD + "VPN";
         String version = getReleaseVersionIfPossible(e.getPlayer().getPendingConnection().getVersion()).getName();
         String lab = getLabel(e.getPlayer());
         String label = lab == null ? "" : ", " + lab;
-        TextComponent tc = new TextComponent(PREFIX + e.getPlayer().getName() + ChatColor.GRAY + "[" + version + label + country + "]"
+        TextComponent tc = new TextComponent(PREFIX + e.getPlayer().getName() + ChatColor.GRAY + "[" + version + label + ChatColor.GRAY + country + ChatColor.GRAY + "]"
                 + ChatColor.YELLOW + ": " + name + " -> " + target + (kickMessage != null ? ChatColor.GRAY + " (kicked from " + kickData.getServer() + ": " + kickMessage + ")" : ""));
         getProxy().getPlayers().forEach(player -> {
             if (player.hasPermission("bungeewaiter.logging") || player.hasPermission("bungeewaiter.notification")) {

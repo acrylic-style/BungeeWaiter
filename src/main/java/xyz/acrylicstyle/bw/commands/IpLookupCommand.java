@@ -9,6 +9,7 @@ import net.md_5.bungee.api.plugin.Command;
 import net.md_5.bungee.api.plugin.TabExecutor;
 import util.CollectionList;
 import xyz.acrylicstyle.bw.BungeeWaiter;
+import xyz.acrylicstyle.bw.ConnectionHolder;
 import xyz.acrylicstyle.sql.TableData;
 import xyz.acrylicstyle.sql.options.FindOptions;
 
@@ -18,17 +19,19 @@ import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.util.UUID;
 
+import static xyz.acrylicstyle.bw.BungeeWaiter.boolInverted;
+
 @SuppressWarnings("DuplicatedCode")
-public class AltLookupCommand extends Command implements TabExecutor {
-    public AltLookupCommand() {
-        super("altlookup", "bungeewaiter.altlookup", "al");
+public class IpLookupCommand extends Command implements TabExecutor {
+    public IpLookupCommand() {
+        super("iplookup", "bungeewaiter.iplookup", "il");
     }
 
     @Override
     public void execute(CommandSender sender, String[] args) {
         new Thread(() -> {
             if (args.length == 0) {
-                sender.sendMessage(new TextComponent(ChatColor.RED + "/altlookup <PlayerName, UUID, or IP>"));
+                sender.sendMessage(new TextComponent(ChatColor.RED + "/iplookup <PlayerName, UUID, or IP>"));
                 return;
             }
             String address = null;
@@ -43,7 +46,7 @@ public class AltLookupCommand extends Command implements TabExecutor {
                 try {
                     InetAddress addr = InetAddress.getByName(td.getString("ip"));
                     if (addr instanceof Inet6Address) ipv4 = false;
-                    address = addr.getHostAddress();
+                    address = BungeeWaiter.getAddress(addr);
                 } catch (UnknownHostException ex) {
                     throw new RuntimeException(ex);
                 }
@@ -53,7 +56,7 @@ public class AltLookupCommand extends Command implements TabExecutor {
                     try {
                         InetAddress addr = InetAddress.getByName(args[0]);
                         if (addr instanceof Inet6Address) ipv4 = false;
-                        address = addr.getHostAddress();
+                        address = BungeeWaiter.getAddress(addr);
                     } catch (UnknownHostException e) {
                         TableData td = BungeeWaiter.db.lastIpV4.findOne(new FindOptions.Builder().addWhere("name", args[0]).build()).complete();
                         if (td == null) {
@@ -63,7 +66,7 @@ public class AltLookupCommand extends Command implements TabExecutor {
                         try {
                             InetAddress addr = InetAddress.getByName(td.getString("ip"));
                             if (addr instanceof Inet6Address) ipv4 = false;
-                            address = addr.getHostAddress();
+                            address = BungeeWaiter.getAddress(addr);
                         } catch (UnknownHostException ex) {
                             throw new RuntimeException(ex);
                         }
@@ -75,21 +78,29 @@ public class AltLookupCommand extends Command implements TabExecutor {
                     }
                     InetAddress addr = ((InetSocketAddress) player.getSocketAddress()).getAddress();
                     if (addr instanceof Inet6Address) ipv4 = false;
-                    address = addr.getHostAddress();
+                    address = BungeeWaiter.getAddress(player);
                 }
             }
+            ConnectionHolder.FraudScore score = BungeeWaiter.db.getFraudScore(address).complete();
             if (ipv4) {
                 // ipv4
-                BungeeWaiter.db.lastIpV4.findAll(new FindOptions.Builder().addWhere("ip", address).build()).then(list -> handler(list, sender, args[0])).queue();
+                BungeeWaiter.db.lastIpV4.findAll(new FindOptions.Builder().addWhere("ip", address).build()).then(list -> handler(score, list, sender, args[0])).queue();
             } else {
                 // ipv6
-                BungeeWaiter.db.lastIpV6.findAll(new FindOptions.Builder().addWhere("ip", address).build()).then(list -> handler(list, sender, args[0])).queue();
+                BungeeWaiter.db.lastIpV6.findAll(new FindOptions.Builder().addWhere("ip", address).build()).then(list -> handler(score, list, sender, args[0])).queue();
             }
         }).start();
     }
 
-    private static Void handler(CollectionList<TableData> list, CommandSender sender, String target) {
+    private static Void handler(ConnectionHolder.FraudScore score, CollectionList<TableData> list, CommandSender sender, String target) {
         sender.sendMessage(new TextComponent(ChatColor.LIGHT_PURPLE + "Lookup result of " + ChatColor.YELLOW + target + ChatColor.LIGHT_PURPLE + ":"));
+        if (score != null) {
+            sender.sendMessage(new TextComponent(ChatColor.YELLOW + " => Country: " + ChatColor.GREEN + score.countryName + ChatColor.GRAY + " (" + score.countryCode + ")"));
+            sender.sendMessage(new TextComponent(ChatColor.YELLOW + " => Fraud Score: " + VersionsCommand.fraudScore(score.fraudScore)));
+            sender.sendMessage(new TextComponent(ChatColor.YELLOW + " => Proxy: " + boolInverted(score.proxy)));
+            sender.sendMessage(new TextComponent(ChatColor.YELLOW + " => VPN: " + boolInverted(score.vpn)));
+            sender.sendMessage(new TextComponent(ChatColor.YELLOW + " => ISP: " + ChatColor.GREEN + score.isp));
+        }
         list.forEach(td -> {
             String name = td.getString("name");
             UUID uuid = UUID.fromString(td.getString("uuid"));
