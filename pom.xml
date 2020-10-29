@@ -83,12 +83,12 @@
         <dependency>
             <groupId>xyz.acrylicstyle</groupId>
             <artifactId>java-util-all</artifactId>
-            <version>0.11.32a</version>
+            <version>0.11.33</version>
         </dependency>
         <dependency>
             <groupId>xyz.acrylicstyle</groupId>
             <artifactId>minecraft-util</artifactId>
-            <version>0.0.11</version>
+            <version>0.0.12</version>
         </dependency>
         <dependency>
             <groupId>xyz.acrylicstyle</groupId>

@@ -136,7 +136,7 @@ public class BungeeWaiter extends Plugin implements Listener {
                         isTargetOnline = throwable == null;
                         if (isTargetOnline) {
                             getProxy().getPlayers().forEach(player -> {
-                                if (player.getServer().getInfo().getName().equalsIgnoreCase(limbo)) {
+                                if (player.getServer().getInfo().getName().equalsIgnoreCase(limbo) && !noWarp.contains(player.getUniqueId())) {
                                     player.connect(getProxy().getServerInfo(target));
                                 }
                             });
@@ -182,7 +182,7 @@ public class BungeeWaiter extends Plugin implements Listener {
         String extra = kickMessage != null ? ChatColor.GRAY + " (kicked from " + kickData.getServer() + ": " + kickData.getMessage() + ")" : "";
         getProxy().getPlayers().forEach(player -> {
             if (player.hasPermission("bungeewaiter.logging") || player.hasPermission("bungeewaiter.notification")) {
-                player.sendMessage(new TextComponent(PREFIX + e.getPlayer().getName() + ChatColor.GRAY  + "[" + finalVersion + "]" + ChatColor.YELLOW + ": " + name + " -> Disconnect" + extra));
+                if (!notification.contains(player.getUniqueId())) player.sendMessage(new TextComponent(PREFIX + e.getPlayer().getName() + ChatColor.GRAY  + "[" + finalVersion + "]" + ChatColor.YELLOW + ": " + name + " -> Disconnect" + extra));
             }
         });
     }
