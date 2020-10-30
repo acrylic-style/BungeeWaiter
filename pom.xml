@@ -93,7 +93,7 @@
         <dependency>
             <groupId>xyz.acrylicstyle</groupId>
             <artifactId>sequelize4j</artifactId>
-            <version>0.3.5</version>
+            <version>0.3.5a</version>
         </dependency>
     </dependencies>
 </project>
