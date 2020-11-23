@@ -83,17 +83,17 @@
         <dependency>
             <groupId>xyz.acrylicstyle</groupId>
             <artifactId>java-util-all</artifactId>
-            <version>0.11.33</version>
+            <version>0.11.40a</version>
         </dependency>
         <dependency>
             <groupId>xyz.acrylicstyle</groupId>
             <artifactId>minecraft-util</artifactId>
-            <version>0.1.0</version>
+            <version>0.2.2</version>
         </dependency>
         <dependency>
             <groupId>xyz.acrylicstyle</groupId>
             <artifactId>sequelize4j</artifactId>
-            <version>0.3.5a</version>
+            <version>0.3.7a</version>
         </dependency>
     </dependencies>
 </project>
