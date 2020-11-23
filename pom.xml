@@ -84,6 +84,7 @@
             <groupId>xyz.acrylicstyle</groupId>
             <artifactId>java-util-all</artifactId>
             <version>0.11.40a</version>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>xyz.acrylicstyle</groupId>
@@ -94,6 +95,12 @@
             <groupId>xyz.acrylicstyle</groupId>
             <artifactId>sequelize4j</artifactId>
             <version>0.3.7a</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>xyz.acrylicstyle</groupId>
+                    <artifactId>java-util-all</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
     </dependencies>
 </project>

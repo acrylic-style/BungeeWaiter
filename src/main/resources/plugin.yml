@@ -8,3 +8,7 @@ commands:
     permission: "bungeewaiter.versions"
   salert:
     permission: "bungeewaiter.salert"
+depends:
+  - TomeitoBungee
+depend:
+  - TomeitoBungee
