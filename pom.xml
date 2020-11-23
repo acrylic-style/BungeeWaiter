@@ -88,7 +88,7 @@
         <dependency>
             <groupId>xyz.acrylicstyle</groupId>
             <artifactId>minecraft-util</artifactId>
-            <version>0.2.2</version>
+            <version>0.2.2a</version>
         </dependency>
         <dependency>
             <groupId>xyz.acrylicstyle</groupId>
