@@ -39,7 +39,7 @@ public class PlayersCommand extends Command implements TabExecutor {
                 labels.add(label);
                 players.add(label, player.getName());
             });
-            CollectionList<String> versions2 = ICollectionList.asList(labels);
+            ICollectionList<String> versions2 = ICollectionList.asList(labels);
             versions2.forEach(label -> messages.add(ChatColor.LIGHT_PURPLE + "[" + label + ChatColor.LIGHT_PURPLE + "] " + ChatColor.YELLOW + "(" + ChatColor.RED + players.get(label).size() + ChatColor.YELLOW + ")" + ChatColor.WHITE + ": " + ChatColor.GREEN + players.get(label).join(ChatColor.YELLOW + ", " + ChatColor.GREEN)));
             messages.map((Function<String, TextComponent>) TextComponent::new).forEach(sender::sendMessage);
         } else {
@@ -56,7 +56,7 @@ public class PlayersCommand extends Command implements TabExecutor {
             versions.add(v);
             players.add(v, player.getName());
         });
-        CollectionList<MCVersion> versions2 = ICollectionList.asList(versions);
+        ICollectionList<MCVersion> versions2 = ICollectionList.asList(versions);
         versions2.sort((a, b) -> b.getProtocolVersion() - a.getProtocolVersion());
         versions2.forEach(version -> messages.add(ChatColor.LIGHT_PURPLE + "[" + (version.isModern() ? ChatColor.GREEN : ChatColor.YELLOW) + version.getName() + ChatColor.LIGHT_PURPLE + "] " + ChatColor.YELLOW + "(" + ChatColor.RED + players.get(version).size() + ChatColor.YELLOW + ")" + ChatColor.WHITE + ": " + ChatColor.GREEN + players.get(version).join(ChatColor.YELLOW + ", " + ChatColor.GREEN)));
         messages.map((Function<String, TextComponent>) TextComponent::new).forEach(sender::sendMessage);

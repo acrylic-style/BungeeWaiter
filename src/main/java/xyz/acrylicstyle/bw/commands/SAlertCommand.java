@@ -32,7 +32,7 @@ public class SAlertCommand extends Command implements TabExecutor {
             sender.sendMessage(new TextComponent(ChatColor.RED + "Please specify a message!"));
             return;
         }
-        CollectionList<String> messages = ICollectionList.asList(args);
+        ICollectionList<String> messages = ICollectionList.asList(args);
         messages.shift();
         String message = messages.join(" ");
         sender.sendMessage(new TextComponent(ChatColor.GRAY + "[" + sender.getName() + " -> {" + server.getName() + "}] " + message));

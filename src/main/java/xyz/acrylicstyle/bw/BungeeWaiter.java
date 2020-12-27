@@ -78,7 +78,7 @@ public class BungeeWaiter extends Plugin implements Listener {
     public static boolean isTargetOnline = false;
     public static Map<UUID, TimerTask> tasks = new HashMap<>();
     public static final List<UUID> notification = new ArrayList<>(); // invert
-    public static CollectionList<UUID> noWarp = new CollectionList<>();
+    public static ICollectionList<UUID> noWarp = new CollectionList<>();
     public static final Timer timer = new Timer();
     public static ConnectionHolder db;
     public static final StringCollection<String> label = new StringCollection<>();
@@ -313,7 +313,7 @@ public class BungeeWaiter extends Plugin implements Listener {
     }
 
     public static MCVersion getReleaseVersionIfPossible(int protocolVersion) {
-        CollectionList<MCVersion> list = ICollectionList.asList(MCVersion.getByProtocolVersion(protocolVersion));
+        ICollectionList<MCVersion> list = ICollectionList.asList(MCVersion.getByProtocolVersion(protocolVersion));
         return list.filter(v -> !v.isSnapshot()).size() == 0 // if non-snapshot version wasn't found
                 ? Objects.requireNonNull(list.first()) // return the last version anyway
                 : Objects.requireNonNull(list.filter(v -> !v.isSnapshot()).first()); // return non-snapshot version instead

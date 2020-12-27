@@ -7,7 +7,6 @@ import net.md_5.bungee.api.chat.TextComponent;
 import net.md_5.bungee.api.connection.ProxiedPlayer;
 import net.md_5.bungee.api.plugin.Command;
 import net.md_5.bungee.api.plugin.TabExecutor;
-import util.CollectionList;
 import util.ICollectionList;
 
 public class TellCommand extends Command implements TabExecutor {
@@ -30,7 +29,7 @@ public class TellCommand extends Command implements TabExecutor {
             sender.sendMessage(new TextComponent(ChatColor.RED + "Please specify a message!"));
             return;
         }
-        CollectionList<String> messages = ICollectionList.asList(args);
+        ICollectionList<String> messages = ICollectionList.asList(args);
         messages.shift();
         String message = messages.join(" ");
         sender.sendMessage(new TextComponent(ChatColor.GRAY + "[" + sender.getName() + " -> " + player.getName() + "] " + ChatColor.WHITE + message));
